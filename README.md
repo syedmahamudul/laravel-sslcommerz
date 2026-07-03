@@ -4,6 +4,7 @@
 [![Total Downloads](https://poser.pugx.org/syedmahamudul/sslcommerz-laravel/downloads)](https://packagist.org/packages/syedmahamudul/sslcommerz-laravel)
 [![Latest Unstable Version](https://poser.pugx.org/syedmahamudul/sslcommerz-laravel/v/unstable)](https://packagist.org/packages/syedmahamudul/sslcommerz-laravel)
 [![License](https://poser.pugx.org/syedmahamudul/sslcommerz-laravel/license)](https://packagist.org/packages/syedmahamudul/sslcommerz-laravel)
+[![GitHub stars](https://img.shields.io/github/stars/syedmahamudul/laravel-sslcommerz)](https://github.com/syedmahamudul/laravel-sslcommerz)
 [![Monthly Downloads](https://poser.pugx.org/syedmahamudul/sslcommerz-laravel/d/monthly)](https://packagist.org/packages/syedmahamudul/sslcommerz-laravel)
 [![Daily Downloads](https://poser.pugx.org/syedmahamudul/sslcommerz-laravel/d/daily)](https://packagist.org/packages/syedmahamudul/sslcommerz-laravel)
 [![composer.lock](https://poser.pugx.org/syedmahamudul/sslcommerz-laravel/composerlock)](https://packagist.org/packages/syedmahamudul/sslcommerz-laravel)
@@ -222,7 +223,7 @@ use App\Http\Controllers\SslcommerzPaymentController;
 
 Route::prefix('sslcommerz')->group(function () {
     Route::get('/form', [SslcommerzPaymentController::class, 'showPaymentForm'])->name('payment.form'); // for form
-    Route::post('/payment/process', [SslcommerzPaymentController::class, 'processPayment'])->name('payment.process');
+    Route::post('/payment/process', [SslcommerzPaymentController::class, 'processPayment'])->name('sslcommerz.payment.process');
     Route::post('success', [SslcommerzPaymentController::class, 'success'])->name('sslcommerz.success');
     Route::post('failure', [SslcommerzPaymentController::class, 'failure'])->name('sslcommerz.failure');
     Route::post('cancel', [SslcommerzPaymentController::class, 'cancel'])->name('sslcommerz.cancel');
@@ -250,84 +251,32 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::create('orders', function (Blueprint $table) {
+         Schema::create('orders', function (Blueprint $table) {
             $table->id();
-            $table->string('order_number')->unique();
+            $table->foreignId('product_id')->constrained()->cascadeOnDelete();
             $table->string('transaction_id')->unique()->nullable();
-            $table->string('bank_transaction_id')->nullable();
-            $table->string('validation_id')->nullable();
-            $table->string('session_key')->nullable();
-            
-            // Customer Information
-            $table->string('customer_name');
-            $table->string('customer_email');
-            $table->string('customer_phone');
+            $table->string('product_name')->nullable();
+            $table->integer('quantity')->nullable();
+            $table->decimal('total_amount', 10, 2)->nullable();
+            $table->string('customer_name')->nullable();
+            $table->string('customer_email')->nullable();
+            $table->string('customer_phone')->nullable();
             $table->text('customer_address')->nullable();
             $table->string('customer_city')->nullable();
-            $table->string('customer_state')->nullable();
+            $table->string('customer_country')->nullable();
             $table->string('customer_postcode')->nullable();
-            $table->string('customer_country')->default('Bangladesh');
-            
-            // Shipping Information
-            $table->string('shipping_method')->default('NO');
-            $table->string('ship_name')->nullable();
-            $table->text('ship_address')->nullable();
-            $table->string('ship_city')->nullable();
-            $table->string('ship_state')->nullable();
-            $table->string('ship_postcode')->nullable();
-            $table->string('ship_country')->default('Bangladesh');
-            
-            // Order Details
-            $table->decimal('subtotal', 10, 2);
-            $table->decimal('discount', 10, 2)->default(0);
-            $table->decimal('tax', 10, 2)->default(0);
-            $table->decimal('shipping_cost', 10, 2)->default(0);
-            $table->decimal('total_amount', 10, 2);
-            $table->string('currency')->default('BDT');
-            
-            // Payment Details
-            $table->string('payment_status')->default('pending'); // pending, completed, failed, cancelled, refunded
-            $table->string('payment_method')->nullable();
-            $table->string('card_type')->nullable();
-            $table->string('card_brand')->nullable();
-            $table->string('card_issuer')->nullable();
-            $table->string('card_issuer_country')->nullable();
-            $table->string('payment_response')->nullable();
-            
-            // Order Status
-            $table->string('order_status')->default('pending'); // pending, processing, shipped, delivered, cancelled
-            
-            // Refund Details
-            $table->decimal('refund_amount', 10, 2)->default(0);
-            $table->string('refund_reason')->nullable();
-            $table->string('refund_ref_id')->nullable();
-            $table->timestamp('refund_date')->nullable();
-            
-            // Risk Information
-            $table->string('risk_level')->default('0');
-            $table->string('risk_title')->nullable();
-            
-            // Meta Data
-            $table->json('meta_data')->nullable();
-            $table->text('notes')->nullable();
-            $table->string('ip_address')->nullable();
-            $table->string('user_agent')->nullable();
-            
-            // User Relation
-            $table->foreignId('user_id')->nullable()->constrained()->onDelete('set null');
-            
+            $table->enum('status', [
+                'pending',
+                'completed',
+                'failed',
+                'cancelled',
+                'refunded'
+            ])->default('pending')->nullable();
+
             $table->timestamps();
-            $table->softDeletes();
-            
-            // Indexes
-            $table->index('order_number');
+
             $table->index('transaction_id');
-            $table->index('customer_email');
-            $table->index('customer_phone');
-            $table->index('payment_status');
-            $table->index('order_status');
-            $table->index('created_at');
-            $table->index('user_id');
+            $table->index('status');
         });
     }
 
