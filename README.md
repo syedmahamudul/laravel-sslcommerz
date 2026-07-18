@@ -890,7 +890,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 use Syedmahamudul\Sslcommerz\Facades\Sslcommerz;
 
-class SslcommerzPaymentControllerTwo extends Controller
+class SslcommerzPaymentController extends Controller
 {
 
 
