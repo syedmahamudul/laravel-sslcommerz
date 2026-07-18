@@ -221,11 +221,12 @@ Create routes for SSLCommerz callbacks in routes/web.php:
 
 use App\Http\Controllers\SslcommerzPaymentController;
 
+
 Route::prefix('sslcommerz')->group(function () {
     Route::get('/form', [SslcommerzPaymentController::class, 'showPaymentForm'])->name('payment.form'); // for form
     Route::post('/payment/process', [SslcommerzPaymentController::class, 'processPayment'])->name('sslcommerz.payment.process');
     Route::post('success', [SslcommerzPaymentController::class, 'success'])->name('sslcommerz.success');
-    Route::post('failure', [SslcommerzPaymentController::class, 'failure'])->name('sslcommerz.failure');
+    Route::post('failed', [SslcommerzPaymentController::class, 'failed'])->name('sslcommerz.failed');
     Route::post('cancel', [SslcommerzPaymentController::class, 'cancel'])->name('sslcommerz.cancel');
     Route::post('ipn', [SslcommerzPaymentController::class, 'ipn'])->name('sslcommerz.ipn');
 });
@@ -234,7 +235,54 @@ Route::prefix('sslcommerz')->group(function () {
 ```
 
 
-### Create Migration
+### Create Migration Product Table
+
+```bash
+php artisan make:model Product -m
+```
+
+```php
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('products', function (Blueprint $table) {
+            $table->id();
+            $table->string('name')->nullable();
+            $table->string('slug')->nullable();
+            $table->string('description')->nullable();
+            $table->string('sku')->nullable();
+            $table->string('image')->nullable();
+            $table->text('price')->nullable();
+            $table->timestamps();
+        });
+    }   
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('products');
+    }
+};
+
+
+```
+
+
+
+
+### Create Migration Order Table
 
 ```bash
 php artisan make:model Order -m
@@ -247,17 +295,14 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     public function up()
     {
-         Schema::create('orders', function (Blueprint $table) {
+        Schema::create('orders', function (Blueprint $table) {
             $table->id();
             $table->foreignId('product_id')->constrained()->cascadeOnDelete();
             $table->string('transaction_id')->unique()->nullable();
-            $table->string('product_name')->nullable();
-            $table->integer('quantity')->nullable();
-            $table->decimal('total_amount', 10, 2)->nullable();
+            $table->string('validation_id')->unique()->nullable();
             $table->string('customer_name')->nullable();
             $table->string('customer_email')->nullable();
             $table->string('customer_phone')->nullable();
@@ -265,6 +310,22 @@ return new class extends Migration
             $table->string('customer_city')->nullable();
             $table->string('customer_country')->nullable();
             $table->string('customer_postcode')->nullable();
+            $table->string('product_name')->nullable();
+            $table->integer('quantity')->nullable();
+            $table->decimal('total_amount', 10, 2)->nullable();
+            $table->string('store_id')->nullable();
+            $table->string('verify_sign_sha2')->nullable();
+            $table->string('bank_transaction_id')->nullable();
+            $table->string('card_type')->nullable();
+            $table->string('card_brand')->nullable();
+            $table->string('card_issuer')->nullable();
+            $table->string('card_issuer_country')->nullable();
+            $table->string('currency')->nullable();
+            $table->string('store_amount')->nullable();
+            $table->string('verify_sign')->nullable();
+            $table->string('payment_date')->nullable();
+            $table->string('tran_date')->nullable();
+            $table->string('cart_status')->nullable();
             $table->enum('status', [
                 'pending',
                 'completed',
@@ -286,7 +347,9 @@ return new class extends Migration
     }
 };
 
+
 ```
+### Create Migration Order Item Table
 
 
 ```bash
@@ -334,6 +397,8 @@ return new class extends Migration
 };
 
 
+
+
 ```
 
 
@@ -344,7 +409,6 @@ return new class extends Migration
 Create a controller to handle SSLCommerz payment requests and callback responses.
 
 ```php
-
 <?php
 
 namespace App\Http\Controllers;
@@ -377,8 +441,7 @@ class SslcommerzPaymentController extends Controller
             'customer_phone' => 'required|string|max:20',
             'customer_address' => 'required|string|max:500',
             'customer_city' => 'required|string|max:100',
-            'customer_country' => 'required|string|max:100',
-            'customer_postcode' => 'nullable|string|max:20',
+            'customer_postcode' => 'nullable|string|max:20'
         ]);
 
         $productId = $request->product_id;
@@ -400,7 +463,7 @@ class SslcommerzPaymentController extends Controller
             $order->quantity = $quantity;
             $order->total_amount = $totalAmount;
 
-            $order->customer_name = $request->customer_name;
+            $order->customer_name = $request->customer_name; 
             $order->customer_email = $request->customer_email;
             $order->customer_phone = $request->customer_phone;
             $order->customer_address = $request->customer_address;
@@ -421,9 +484,7 @@ class SslcommerzPaymentController extends Controller
                     $orderItem = new OrderItem();
                     $orderItem->order_id = $order->id;
                     $orderItem->product_id = $item['product_id'] ?? null;
-                    $orderItem->product_name = $item['product_name'] ?? '';
                     $orderItem->product_sku = $item['product_sku'] ?? null;
-                    $orderItem->product_image = $item['product_image'] ?? null;
                     $orderItem->unit_price = $item['unit_price'] ?? 0;
                     $orderItem->quantity = $item['quantity'] ?? 1;
                     $orderItem->total_price = ($item['unit_price'] ?? 0) * ($item['quantity'] ?? 1);
@@ -453,7 +514,7 @@ class SslcommerzPaymentController extends Controller
                 $orderItems[] = $orderItem;
             }
 
-            Log::info('Order created with pending status', [
+            Log::info('Order created with pending status', [  //you will remove this in production
                 'order_id' => $order->id,
                 'transaction_id' => $transactionId,
                 'customer_name' => $request->customer_name,
@@ -552,14 +613,16 @@ class SslcommerzPaymentController extends Controller
         $currency = $request->input('currency');
         $storeAmount = $request->input('store_amount');
         $verifySign = $request->input('verify_sign');
+        $storeId = $request->input('store_id');
         $status = $request->input('status');
+        $verifySignSha2 = $request->input('verify_sign_sha2');
 
-        Log::info('SSLCommerz Success Callback', [
-            'transaction_id' => $transactionId,
-            'amount' => $amount,
-            'card_type' => $cardType,
-            'status' => $status
-        ]);
+        // Log::info('SSLCommerz Success Callback', [  //you will remove this in production
+        //     'transaction_id' => $transactionId,
+        //     'amount' => $amount,
+        //     'card_type' => $cardType,
+        //     'status' => $status
+        // ]);
 
         // --- FIND THE ORDER BY TRANSACTION ID ---
         $order = DB::table('orders')
@@ -568,18 +631,18 @@ class SslcommerzPaymentController extends Controller
 
         if (!$order) {
             Log::error('Order not found', ['transaction_id' => $transactionId]);
-            return redirect()->route('payment.failed')->with('error', 'Order not found!');
+            return redirect()->route('sslcommerz.failed')->with('error', 'Order not found!');
         }
 
-        Log::info('Order found', [
-            'order_id' => $order->id,
-            'current_status' => $order->status,
-            'customer_name' => $order->customer_name
-        ]);
+        // Log::info('Order found', [   //you will remove this in production
+        //     'order_id' => $order->id,
+        //     'current_status' => $order->status,
+        //     'customer_name' => $order->customer_name
+        // ]);
 
         // --- VALIDATE PAYMENT WITH SSLCOMMERZ ---
         if (Sslcommerz::validate($request->all(), $transactionId, $amount)) {
-
+               
             try {
                 // --- UPDATE ORDER WITH PAYMENT DETAILS ---
                 DB::table('orders')
@@ -594,13 +657,16 @@ class SslcommerzPaymentController extends Controller
                         'card_issuer_country' => $cardIssuerCountry,
                         'currency' => $currency,
                         'store_amount' => $storeAmount,
+                        'store_id' => $storeId,
+                        'verify_sign_sha2' => $verifySignSha2,
                         'verify_sign' => $verifySign,
+                        'cart_status' => $status,
                         'payment_date' => now(),
                         'tran_date' => $tranDate,
                         'updated_at' => now(),
                     ]);
 
-                Log::info('Order updated to completed', [
+                Log::info('Order updated to completed', [  //you will remove this in production
                     'order_id' => $order->id,
                     'transaction_id' => $transactionId,
                     'customer_name' => $order->customer_name
@@ -629,7 +695,7 @@ class SslcommerzPaymentController extends Controller
                     'trace' => $e->getTraceAsString()
                 ]);
 
-                return redirect()->route('payment.failed')->with('error', 'Failed to update order!');
+                return redirect()->route('sslcommerz.failed')->with('error', 'Failed to update order!');
             }
         }
 
@@ -645,7 +711,7 @@ class SslcommerzPaymentController extends Controller
             'transaction_id' => $transactionId
         ]);
 
-        return redirect()->route('payment.failed')->with('error', 'Payment validation failed!');
+        return redirect()->route('sslcommerz.failed')->with('error', 'Payment validation failed!');
     }
 
     public function failed(Request $request)
@@ -661,7 +727,7 @@ class SslcommerzPaymentController extends Controller
                     'updated_at' => now(),
                 ]);
 
-            Log::info('Order marked as failed', ['transaction_id' => $transactionId]);
+            Log::info('Order marked as failed', ['transaction_id' => $transactionId]);  //you will remove this in production
         }
 
         return view('payment.failed')->with('error', 'Payment failed! Please try again.');
@@ -680,7 +746,7 @@ class SslcommerzPaymentController extends Controller
                     'updated_at' => now(),
                 ]);
 
-            Log::info('Order cancelled', ['transaction_id' => $transactionId]);
+            Log::info('Order cancelled', ['transaction_id' => $transactionId]);  //you will remove this in production
         }
 
         return redirect()->route('payment.form')->with('error', 'Payment cancelled!');
@@ -691,7 +757,7 @@ class SslcommerzPaymentController extends Controller
         $transactionId = $request->input('tran_id');
         $status = $request->input('status');
 
-        Log::info('IPN Received', [
+        Log::info('IPN Received', [  //you will remove this in production
             'transaction_id' => $transactionId,
             'status' => $status,
             'all_data' => $request->all()
@@ -742,6 +808,7 @@ class SslcommerzPaymentController extends Controller
         return $names[$productId] ?? 'Product';
     }
 }
+
 
 ```
 
@@ -810,7 +877,6 @@ Create a controller to handle class SslcommerzPaymentController extends Controll
 
 
 ```php
-
 <?php
 
 namespace App\Http\Controllers;
@@ -821,9 +887,10 @@ use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Session;
 use Syedmahamudul\Sslcommerz\Facades\Sslcommerz;
 
-class SslcommerzPaymentController extends Controller
+class SslcommerzPaymentControllerTwo extends Controller
 {
 
 
@@ -832,7 +899,7 @@ class SslcommerzPaymentController extends Controller
         $products = Product::all(); // Fetch all products from the database
         return view('payment.form', compact('products'));
     }
-     public function processPayment(Request $request)
+    public function processPayment(Request $request)
     {
         $request->validate([
             'product_id' => 'required|numeric',
@@ -867,7 +934,7 @@ class SslcommerzPaymentController extends Controller
             'customer_postcode' => $request->input('customer_postcode') ?? '1000',
         ];
 
-        // SAVE TO DATABASE - NO SESSION
+        // SAVE TO DATABASE - NO SESSION 
         DB::table('payment_sessions')->insert([
             'transaction_id' => $transactionId,
             'data' => json_encode($orderData),
@@ -878,7 +945,7 @@ class SslcommerzPaymentController extends Controller
 
         // Store transaction ID in URL for later use
         // We'll pass it as a query parameter if needed
-        $successUrl = route('payment.success') . '?tran_id=' . $transactionId;
+        $successUrl = route('sslcommerz.success') . '?tran_id=' . $transactionId;
 
         try {
             $response = Sslcommerz::init([
@@ -944,6 +1011,13 @@ class SslcommerzPaymentController extends Controller
         $currency = $request->input('currency');
         $storeAmount = $request->input('store_amount');
         $verifySign = $request->input('verify_sign');
+        $productId = $request->input('product_id');
+        $productName = $this->getProductName($productId);
+        $verifySign = $request->input('verify_sign');
+        $storeId = $request->input('store_id');
+        $status = $request->input('status');
+        $verifySignSha2 = $request->input('verify_sign_sha2');
+
 
         Log::info('SSLCommerz Success Callback', [
             'transaction_id' => $transactionId,
@@ -961,7 +1035,7 @@ class SslcommerzPaymentController extends Controller
             Log::error('Payment session not found in database', [
                 'transaction_id' => $transactionId
             ]);
-            return redirect()->route('payment.failed')->with('error', 'Order data not found!');
+            return redirect()->route('sslcommerz.failed')->with('error', 'Order data not found!');
         }
 
         $orderData = json_decode($tempData->data, true);
@@ -978,70 +1052,80 @@ class SslcommerzPaymentController extends Controller
             try {
 
 
-            $order = new Order();
-            $order->transaction_id = $transactionId;
-            $order->product_id = $productId;
-            $order->product_name = $productName;
-            $order->quantity = $quantity;
-            $order->total_amount = $totalAmount;
+                $order = new Order();
+                $order->transaction_id = $transactionId;
+                $order->product_id = $orderData['product_id'] ?? null;
+                $order->product_name = $orderData['product_name'] ?? null;
+                $order->quantity = $orderData['quantity'] ?? 1;
+                $order->total_amount = $orderData['total_amount'] ?? 0;
+                $order->customer_name = $orderData['customer_name'] ?? null;
+                $order->customer_email = $orderData['customer_email'] ?? null;
+                $order->customer_phone = $orderData['customer_phone'] ?? null;
+                $order->customer_address = $orderData['customer_address'] ?? null;
+                $order->customer_city = $orderData['customer_city'] ?? null;
+                $order->customer_country = $orderData['customer_country'] ?? null;
+                $order->customer_postcode = $orderData['customer_postcode'] ?? null;
+                $order->bank_transaction_id = $bankTransactionId;
+                $order->validation_id = $validationId;
+                $order->card_type = $cardType;
+                $order->card_brand = $cardBrand;
+                $order->card_issuer = $cardIssuer;
+                $order->card_issuer_country = $cardIssuerCountry;
+                $order->currency = $currency;
+                $order->store_id = $storeId;
+                $order->store_amount = $storeAmount;
+                $order->verify_sign_sha2 = $verifySignSha2;
+                $order->verify_sign = $verifySign;
+                $order->cart_status = $status;
+                $order->payment_date = now();
+                $order->tran_date = $tranDate;
+                $order->updated_at = now();
+                $order->save();
+                // Create Order Items (can be multiple)
+                $orderItems = [];
 
-            $order->customer_name = $request->customer_name;
-            $order->customer_email = $request->customer_email;
-            $order->customer_phone = $request->customer_phone;
-            $order->customer_address = $request->customer_address;
-            $order->customer_city = $request->customer_city;
-            $order->customer_country = $request->customer_country;
-            $order->customer_postcode = $request->customer_postcode ?? '1000';
-
-            $order->status = 'pending';
-
-            $order->save();
-
-            // Create Order Items (can be multiple)
-            $orderItems = [];
-
-            // If you have multiple items from request
-            if ($request->has('products') && is_array($request->products)) {
-                foreach ($request->products as $item) {
+                // If you have multiple items from request
+                if ($request->has('products') && is_array($request->products)) {
+                    foreach ($request->products as $item) {
+                        $orderItem = new OrderItem();
+                        $orderItem->order_id = $order->id;
+                        $orderItem->product_id = $item['product_id'] ?? null;
+                        $orderItem->product_name = $item['product_name'] ?? '';
+                        $orderItem->product_sku = $item['product_sku'] ?? null;
+                        $orderItem->product_image = $item['product_image'] ?? null;
+                        $orderItem->unit_price = $item['unit_price'] ?? 0;
+                        $orderItem->quantity = $item['quantity'] ?? 1;
+                        $orderItem->total_price = ($item['unit_price'] ?? 0) * ($item['quantity'] ?? 1);
+                        $orderItem->discount = $item['discount'] ?? 0;
+                        $orderItem->tax = $item['tax'] ?? 0;
+                        $orderItem->attributes = $item['attributes'] ?? null;
+                        $orderItem->notes = $item['notes'] ?? null;
+                        $orderItem->save();
+                        $orderItems[] = $orderItem;
+                    }
+                } else {
+                    // Single item (fallback for backward compatibility)
                     $orderItem = new OrderItem();
                     $orderItem->order_id = $order->id;
-                    $orderItem->product_id = $item['product_id'] ?? null;
-                    $orderItem->product_name = $item['product_name'] ?? '';
-                    $orderItem->product_sku = $item['product_sku'] ?? null;
-                    $orderItem->product_image = $item['product_image'] ?? null;
-                    $orderItem->unit_price = $item['unit_price'] ?? 0;
-                    $orderItem->quantity = $item['quantity'] ?? 1;
-                    $orderItem->total_price = ($item['unit_price'] ?? 0) * ($item['quantity'] ?? 1);
-                    $orderItem->discount = $item['discount'] ?? 0;
-                    $orderItem->tax = $item['tax'] ?? 0;
-                    $orderItem->attributes = $item['attributes'] ?? null;
-                    $orderItem->notes = $item['notes'] ?? null;
+                    $orderItem->product_id = $productId;
+                    $orderItem->product_name = $productName;
+                    $orderItem->product_sku = null;
+                    $orderItem->product_image = null;
+                    $orderItem->unit_price = $orderData['total_amount'] ?? 0;
+                    $orderItem->quantity = $orderData['quantity'] ?? 1;
+                    $orderItem->total_price = ($orderItem->unit_price ?? 0) * ($orderData['quantity'] ?? 1);
+                    $orderItem->discount = 0;
+                    $orderItem->tax = 0;
+                    $orderItem->attributes = null;
+                    $orderItem->notes = null;
                     $orderItem->save();
                     $orderItems[] = $orderItem;
                 }
-            } else {
-                // Single item (fallback for backward compatibility)
-                $orderItem = new OrderItem();
-                $orderItem->order_id = $order->id;
-                $orderItem->product_id = $productId;
-                $orderItem->product_name = $productName;
-                $orderItem->product_sku = null;
-                $orderItem->product_image = null;
-                $orderItem->unit_price = $price;
-                $orderItem->quantity = $quantity;
-                $orderItem->total_price = $totalAmount;
-                $orderItem->discount = 0;
-                $orderItem->tax = 0;
-                $orderItem->attributes = null;
-                $orderItem->notes = null;
-                $orderItem->save();
-                $orderItems[] = $orderItem;
-            }
 
 
                 // Return success view with data (not using session)
                 return view('payment.success', [
-                    'orderId' => $orderId,
+                    'orderId' => $order->id,
                     'transactionId' => $transactionId,
                     'bankTransactionId' => $bankTransactionId,
                     'amount' => $amount,
@@ -1061,7 +1145,7 @@ class SslcommerzPaymentController extends Controller
                     'trace' => $e->getTraceAsString()
                 ]);
 
-                return redirect()->route('payment.failed')->with('error', 'Failed to save order data!');
+                return redirect()->route('sslcommerz.failed')->with('error', 'Failed to save order data!');
             }
         }
 
@@ -1069,7 +1153,7 @@ class SslcommerzPaymentController extends Controller
             'transaction_id' => $transactionId
         ]);
 
-        return redirect()->route('payment.failed')->with('error', 'Payment validation failed!');
+        return redirect()->route('sslcommerz.failed')->with('error', 'Payment validation failed!');
     }
 
     public function paymentSuccess()
