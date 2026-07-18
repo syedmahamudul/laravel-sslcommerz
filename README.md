@@ -997,7 +997,6 @@ class SslcommerzPaymentController extends Controller
     }
     public function success(Request $request)
     {
-
         // Get all data from SSLCommerz
         $transactionId = $request->input('tran_id');
         $amount = $request->input('amount');
@@ -1050,8 +1049,6 @@ class SslcommerzPaymentController extends Controller
         if (Sslcommerz::validate($request->all(), $transactionId, $amount)) {
 
             try {
-
-
                 $order = new Order();
                 $order->transaction_id = $transactionId;
                 $order->product_id = $orderData['product_id'] ?? null;
@@ -1122,7 +1119,6 @@ class SslcommerzPaymentController extends Controller
                     $orderItems[] = $orderItem;
                 }
 
-
                 // Return success view with data (not using session)
                 return view('payment.success', [
                     'orderId' => $order->id,
@@ -1144,7 +1140,6 @@ class SslcommerzPaymentController extends Controller
                     'transaction_id' => $transactionId,
                     'trace' => $e->getTraceAsString()
                 ]);
-
                 return redirect()->route('sslcommerz.failed')->with('error', 'Failed to save order data!');
             }
         }
@@ -1241,27 +1236,6 @@ class SslcommerzPaymentController extends Controller
         return response()->json(['status' => 'success']);
     }
 
-    // Helper methods
-    private function getProductPrice($productId)
-    {
-        $prices = [
-            1 => 100,
-            2 => 200,
-            3 => 300,
-        ];
-        return $prices[$productId] ?? 100;
-    }
-
-    private function getProductName($productId)
-    {
-        $names = [
-            1 => 'Product 1',
-            2 => 'Product 2',
-            3 => 'Product 3',
-        ];
-        return $names[$productId] ?? 'Product';
-    }
-}
 
 ```
 ## Create the Payment Form
@@ -1952,53 +1926,6 @@ to your CSRF exceptions.
 
 ---
 
-## 3. Payment Validation Failed
-
-**Cause**
-
-Amount or Transaction ID mismatch.
-
-**Solution**
-
-Verify both values before validation.
-
----
-
-## 4. SSL Certificate Error
-
-**Cause**
-
-Local SSL certificate issue.
-
-**Solution**
-
-Disable SSL verification only in development.
-
----
-
-## 5. Store ID or Password Incorrect
-
-**Cause**
-
-Wrong credentials.
-
-**Solution**
-
-Check your `.env` file.
-
----
-
-## 6. Transaction Not Found
-
-**Cause**
-
-Invalid Transaction ID.
-
-**Solution**
-
-Verify the transaction exists in SSLCommerz.
-
----
 
 ## Debugging
 
@@ -2038,14 +1965,6 @@ See the **LICENSE** file for more information.
 ## Support
 
 If this package helps you, please consider giving it a ⭐ on GitHub.
-
----
-
-## Acknowledgments
-
-- SSLCommerz
-- Laravel
-- All contributors
 
 ---
 
