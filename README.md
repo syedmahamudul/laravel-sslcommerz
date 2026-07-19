@@ -219,6 +219,14 @@ Create routes for SSLCommerz callbacks in routes/web.php:
 
 ```php
 
+
+```
+
+
+### Important View File
+You must create a view file for the folder payment and view file name form.blade.php, failed.blade.php, success.blade.php,  Or use your custom view file name    
+```php
+
 use App\Http\Controllers\SslcommerzPaymentController;
 
 
