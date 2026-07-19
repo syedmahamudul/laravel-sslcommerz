@@ -213,18 +213,17 @@ Open `bootstrap/app.php` and exclude the callback routes using the `validateCsrf
 ```
 
 
+
+### Important View File
+
+You must create a view file for the folder payment and view file name form.blade.php, failed.blade.php, success.blade.php,  Or use your custom view file name    
+
+
+
 ### Create Routes
 
 Create routes for SSLCommerz callbacks in routes/web.php:
 
-```php
-
-
-```
-
-
-### Important View File
-You must create a view file for the folder payment and view file name form.blade.php, failed.blade.php, success.blade.php,  Or use your custom view file name    
 ```php
 
 use App\Http\Controllers\SslcommerzPaymentController;
