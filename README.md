@@ -4,13 +4,13 @@
 [![Total Downloads](https://poser.pugx.org/syedmahamudul/sslcommerz-laravel/downloads)](https://packagist.org/packages/syedmahamudul/sslcommerz-laravel)
 [![Latest Unstable Version](https://poser.pugx.org/syedmahamudul/sslcommerz-laravel/v/unstable)](https://packagist.org/packages/syedmahamudul/sslcommerz-laravel)
 [![License](https://poser.pugx.org/syedmahamudul/sslcommerz-laravel/license)](https://packagist.org/packages/syedmahamudul/sslcommerz-laravel)
-[![GitHub stars](https://img.shields.io/github/stars/syedmahamudul/laravel-sslcommerz)](https://github.com/syedmahamudul/laravel-sslcommerz)
+[![GitHub stars](https://img.shields.io/github/stars/syedmahamudul/sslcommerz-laravel)](https://github.com/syedmahamudul/sslcommerz-laravel)
 [![Monthly Downloads](https://poser.pugx.org/syedmahamudul/sslcommerz-laravel/d/monthly)](https://packagist.org/packages/syedmahamudul/sslcommerz-laravel)
 [![Daily Downloads](https://poser.pugx.org/syedmahamudul/sslcommerz-laravel/d/daily)](https://packagist.org/packages/syedmahamudul/sslcommerz-laravel)
 [![composer.lock](https://poser.pugx.org/syedmahamudul/sslcommerz-laravel/composerlock)](https://packagist.org/packages/syedmahamudul/sslcommerz-laravel)
 [![PHP Version](https://img.shields.io/packagist/php-v/syedmahamudul/sslcommerz-laravel)](https://packagist.org/packages/syedmahamudul/sslcommerz-laravel)
 
-This package is built for [SSLCommerz](https://www.sslcommerz.com) online payment gateway in Bangladesh. It supports **Laravel 5.5+, 6.x, 7.x, 8.x, 9.x, 10.x, and 11.x, 12.x, 13.x** and works with **PHP 7.0 to 8.2+**.
+This package is built for [SSLCommerz](https://www.sslcommerz.com) online payment gateway in Bangladesh. It supports **Laravel 5.5+, 6.x, 7.x, 8.x, 9.x, 10.x, and 11.x, 12.x, 13.x** and works with **PHP 7.0 to 8.6+**.
 
 ## 🚀 Features
 

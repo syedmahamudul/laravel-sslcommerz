@@ -2,7 +2,7 @@
     "name": "syedmahamudul/sslcommerz-laravel",
     "description": "SSLCommerz Payment Gateway Integration Package for Laravel",
     "keywords": ["laravel", "sslcommerz", "payment", "payment-gateway", "bangladesh"],
-    "homepage": "https://github.com/syedmahamudul/laravel-sslcommerz",
+    "homepage": "https://github.com/syedmahamudul/sslcommerz-laravel",
     "license": "MIT",
     "authors": [
         {
